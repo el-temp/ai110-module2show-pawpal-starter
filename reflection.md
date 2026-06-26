@@ -5,7 +5,18 @@
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+
+There will be four classes; Owner, Pet, Task, and Sceduler. Owner and Pet will contain basic information about their respective things, while task and design will 
+
 - What classes did you include, and what responsibilities did you assign to each?
+
+Owner attributes: name, address, pets
+Owner methods: edit_name, edit_address, add_pet, remove_pet, edit pet
+Pet attributes: pet_name, pet_type, special notes
+Pet methods: add_info, delete_info, edit_info
+Task attributes: description, due_time, completion_status
+Task Methods: edit description, edit due_time, mark_complete
+Scheduler: organize tasks by due date, filter by pet
 
 **b. Design changes**
 
