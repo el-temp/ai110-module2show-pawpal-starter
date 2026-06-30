@@ -21,7 +21,9 @@ Scheduler: organize tasks by due date, filter by pet
 **b. Design changes**
 
 - Did your design change during implementation?
+Yes
 - If yes, describe at least one change and why you made it.
+One change it made was importing pythons built in time object. The original implementation put time as a String which would cause some problems during sorting which should in theory be fixed now that it uses time object
 
 ---
 
