@@ -95,10 +95,10 @@ Sample test output:
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Task sorting | organize_by_due_date | sorts by what tasks need to be completed first |
+| Filtering | filter_by_pet , _find_pet_for_task  | lets you search for the tasks a specific pet has and whatpets still need a specific task to be done |
+| Conflict handling | find_time_conflicts | gives warning when time slots are overlapping|
+| Recurring tasks | complete_task , next_occurrence | If a frequency is assigned to a task mark_complete in scheduler calls next_occurence in task to ensure the recurance is successful |
 
 ## 📸 Demo Walkthrough
 

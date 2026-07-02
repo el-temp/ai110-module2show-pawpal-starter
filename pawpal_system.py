@@ -1,6 +1,18 @@
+import calendar
 from dataclasses import dataclass, field
-from datetime import time
+from datetime import date, datetime, time, timedelta
 from typing import Optional
+
+RECURRENCE_INTERVALS = {"daily": timedelta(days=1), "weekly": timedelta(days=7)}
+
+
+def _add_one_month(d: date) -> date:
+    """Return the date one calendar month after d, clamping the day to
+    whatever the target month actually has (e.g. Jan 31 -> Feb 28)."""
+    month = d.month % 12 + 1
+    year = d.year + (d.month // 12)
+    day = min(d.day, calendar.monthrange(year, month)[1])
+    return d.replace(year=year, month=month, day=day)
 
 
 @dataclass
@@ -11,6 +23,7 @@ class Task:
     priority: str  # "low", "medium", "high"
     frequency: str = "once"  # "once", "daily", "weekly", "monthly"
     completion_status: bool = False
+    due_date: date = field(default_factory=date.today)
 
     def edit_description(self, description: str):
         """Update the task's description text."""
@@ -29,6 +42,39 @@ class Task:
     def mark_complete(self):
         """Mark the task as completed."""
         self.completion_status = True
+
+    def next_occurrence(self) -> Optional["Task"]:
+        """Return a fresh pending Task for this task's next occurrence, or
+        None if the task doesn't recur (frequency == "once").
+
+        Daily/weekly occurrences use timedelta for an exact day offset;
+        monthly occurrences advance by one calendar month.
+        """
+        if self.frequency == "once":
+            return None
+
+        if self.frequency in RECURRENCE_INTERVALS:
+            next_due_date = self.due_date + RECURRENCE_INTERVALS[self.frequency]
+        elif self.frequency == "monthly":
+            next_due_date = _add_one_month(self.due_date)
+        else:
+            return None
+
+        return Task(
+            description=self.description,
+            due_time=self.due_time,
+            duration_minutes=self.duration_minutes,
+            priority=self.priority,
+            frequency=self.frequency,
+            completion_status=False,
+            due_date=next_due_date,
+        )
+
+    def end_time(self) -> time:
+        """Return the time this task finishes, based on due_time + duration."""
+        start = datetime.combine(datetime.min, self.due_time)
+        end = start + timedelta(minutes=self.duration_minutes)
+        return end.time()
 
 
 @dataclass
@@ -127,11 +173,58 @@ class Scheduler:
 
     def filter_by_pet(self, pet: Pet) -> list[Task]:
         """Return tasks belonging to a specific pet across all owners."""
-        for owner in self.owners:
-            tasks = owner.get_tasks_for_pet(pet)
-            if tasks:
-                return tasks
+        if any(pet in owner.pets for owner in self.owners):
+            return list(pet.tasks)
         return []
+
+    def _find_pet_for_task(self, task: Task) -> Optional[Pet]:
+        """Locate the pet that owns the given task instance."""
+        for owner in self.owners:
+            for pet in owner.pets:
+                if any(t is task for t in pet.tasks):
+                    return pet
+        return None
+
+    def complete_task(self, task: Task) -> Optional[Task]:
+        """Mark a task complete and, if it recurs, schedule its next
+        occurrence so the owner never has to manually re-add daily/weekly/
+        monthly chores.
+        """
+        task.mark_complete()
+
+        next_task = task.next_occurrence()
+        if next_task is not None:
+            pet = self._find_pet_for_task(task)
+            if pet is not None:
+                pet.add_task(next_task)
+
+        return next_task
+
+    def find_time_conflicts(self) -> list[tuple[Task, Task]]:
+        """Return pairs of pending tasks whose time windows overlap.
+
+        An owner can't physically perform two overlapping tasks at once, so
+        surfacing these lets them notice and reschedule before the day starts.
+        """
+        pending = [t for t in self.get_all_tasks() if not t.completion_status]
+        sorted_tasks = sorted(pending, key=lambda t: t.due_time)
+
+        conflicts = []
+        for earlier, later in zip(sorted_tasks, sorted_tasks[1:]):
+            start = datetime.combine(datetime.min, earlier.due_time)
+            end = start + timedelta(minutes=earlier.duration_minutes)
+            later_start = datetime.combine(datetime.min, later.due_time)
+            if later_start < end:
+                conflicts.append((earlier, later))
+
+        return conflicts
+
+    def total_care_minutes(self) -> int:
+        """Return the total minutes of pending pet care tasks, so an owner
+        can see at a glance how much of their day is committed."""
+        return sum(
+            t.duration_minutes for t in self.get_all_tasks() if not t.completion_status
+        )
 
     def build_schedule(self) -> list[dict]:
         """Build a prioritized schedule of all pending tasks sorted by due time."""
@@ -140,15 +233,19 @@ class Scheduler:
             pending,
             key=lambda t: (t.due_time, PRIORITY_ORDER.get(t.priority, 1)),
         )
+        conflicting_ids = {id(t) for pair in self.find_time_conflicts() for t in pair}
 
         schedule = []
         for task in sorted_tasks:
+            reason = f"Priority: {task.priority}, due at {task.due_time.strftime('%I:%M %p')}"
+            if id(task) in conflicting_ids:
+                reason += " -- CONFLICT: overlaps with another task"
             schedule.append({
                 "description": task.description,
                 "due_time": task.due_time.strftime("%I:%M %p"),
                 "duration_minutes": task.duration_minutes,
                 "priority": task.priority,
-                "reason": f"Priority: {task.priority}, due at {task.due_time.strftime('%I:%M %p')}",
+                "reason": reason,
             })
 
         return schedule

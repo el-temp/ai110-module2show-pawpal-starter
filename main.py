@@ -79,3 +79,5 @@ for i, entry in enumerate(schedule, start=1):
     print(f"{i}. [{entry['due_time']}] {entry['description']}")
     print(f"   Duration: {entry['duration_minutes']} min | {entry['reason']}")
     print()
+
+print(f"Total daily care time: {scheduler.total_care_minutes()} minutes")

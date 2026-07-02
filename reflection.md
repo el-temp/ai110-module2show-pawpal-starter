@@ -32,12 +32,16 @@ One change it made was importing pythons built in time object. The original impl
 **a. Constraints and priorities**
 
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
+The constraint that the system makes is the time and prirotity. 
 - How did you decide which constraints mattered most?
+Preferences is left pretty open for editing but making sure the timing of task is correct is integral.
 
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
+For my filter_by_pet method there was a suggestion to reduce the time complexity by adding a dictionary however that was not implemented into this code. Instead it was left largely as is to help with readability.
 - Why is that tradeoff reasonable for this scenario?
+This tradeoff is reasonable since overall the prohject is not very resource intensive so being able to understand the code for a small loss of effieceny is a worthwhile trade.
 
 ---
 
